@@ -27,26 +27,33 @@ jobs:
             npm install
           fi
 
-      # ---------- NEW: Token test step ----------
-      - name: 🔍 Test Discord token validity
+      - name: Check if TOKEN is set
         env:
           TOKEN: ${{ secrets.TOKEN }}
         run: |
-          echo "Testing token with Discord API..."
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: ${TOKEN}" https://discord.com/api/v9/users/@me)
-          echo "HTTP status code: $HTTP_CODE"
+          if [ -z "$TOKEN" ]; then
+            echo "❌ TOKEN is empty. Please add the secret in Settings."
+            exit 1
+          fi
+          echo "Token length: ${#TOKEN} (should be around 60-70)"
+          echo "First 4 chars: ${TOKEN:0:4} (should show the beginning of your token)"
+
+      - name: Test token with Discord
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -H "Authorization: $TOKEN" https://discord.com/api/v9/users/@me)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          echo "HTTP Status: $HTTP_CODE"
           if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Token is VALID. The bot should work."
+            echo "✅ Token is VALID! Running bot..."
           else
-            echo "❌ Token is INVALID (got HTTP $HTTP_CODE)."
-            echo "Possible reasons: token expired, wrong type, 2FA not included, or secret misformatted."
+            echo "❌ Token is INVALID. Are you using your own account token (not a bot token)?"
             exit 1
           fi
 
-      # ---------- Original bot runner ----------
       - name: Run the bot
         env:
           TOKEN: ${{ secrets.TOKEN }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-        run: |
-          npm run github
+        run: npm run github
