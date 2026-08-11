@@ -27,6 +27,23 @@ jobs:
             npm install
           fi
 
+      # ---------- NEW: Token test step ----------
+      - name: 🔍 Test Discord token validity
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          echo "Testing token with Discord API..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: ${TOKEN}" https://discord.com/api/v9/users/@me)
+          echo "HTTP status code: $HTTP_CODE"
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Token is VALID. The bot should work."
+          else
+            echo "❌ Token is INVALID (got HTTP $HTTP_CODE)."
+            echo "Possible reasons: token expired, wrong type, 2FA not included, or secret misformatted."
+            exit 1
+          fi
+
+      # ---------- Original bot runner ----------
       - name: Run the bot
         env:
           TOKEN: ${{ secrets.TOKEN }}
